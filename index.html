@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Mission 89</title>
+<meta name="description" content="20-day transformation tracker. Train hard. Track everything. Hit 89kg." />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mission 89" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/favicon.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ============ SPLASH / LOADING ============ -->
+<div id="splash" class="splash">
+  <div class="splash-ring">
+    <svg viewBox="0 0 120 120" class="splash-svg">
+      <circle cx="60" cy="60" r="52" class="splash-track"/>
+      <circle cx="60" cy="60" r="52" class="splash-progress"/>
+    </svg>
+    <div class="splash-mark">89</div>
+  </div>
+  <div class="splash-title">MISSION 89</div>
+  <div class="splash-sub">Loading your data&hellip;</div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app" class="app hidden">
+
+  <!-- ---------- TOP HEADER ---------- -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand-mark">M89</span>
+      <div class="brand-text">
+        <span class="brand-title">MISSION 89</span>
+        <span class="brand-sub" id="headerDayLabel">Day 1 of 20</span>
+      </div>
+    </div>
+    <button class="icon-btn" id="streakPill" title="Streak">
+      <svg viewBox="0 0 24 24" class="icon-flame"><path d="M12 2c1 3-1 4-2 6-1.5 2.5.5 4 2 4 2 0 3-2 2-4 2 1 3 3 3 5a5 5 0 0 1-10 0c0-4 3-6 5-11z"/></svg>
+      <span id="streakCount">0</span>
+    </button>
+  </header>
+
+  <!-- ---------- VIEWS ---------- -->
+  <main class="views" id="viewsContainer">
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard" data-view="dashboard">
+      <div class="view-inner" id="dashboardContent"></div>
+    </section>
+
+    <!-- CHECK-IN -->
+    <section class="view" id="view-checkin" data-view="checkin">
+      <div class="view-inner" id="checkinContent"></div>
+    </section>
+
+    <!-- WORKOUT -->
+    <section class="view" id="view-workout" data-view="workout">
+      <div class="view-inner" id="workoutContent"></div>
+    </section>
+
+    <!-- NUTRITION -->
+    <section class="view" id="view-nutrition" data-view="nutrition">
+      <div class="view-inner" id="nutritionContent"></div>
+    </section>
+
+    <!-- PROGRESS -->
+    <section class="view" id="view-progress" data-view="progress">
+      <div class="view-inner" id="progressContent"></div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="view" id="view-calendar" data-view="calendar">
+      <div class="view-inner" id="calendarContent"></div>
+    </section>
+
+    <!-- PHOTOS -->
+    <section class="view" id="view-photos" data-view="photos">
+      <div class="view-inner" id="photosContent"></div>
+    </section>
+
+    <!-- COACH -->
+    <section class="view" id="view-coach" data-view="coach">
+      <div class="view-inner" id="coachContent"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings" data-view="settings">
+      <div class="view-inner" id="settingsContent"></div>
+    </section>
+
+  </main>
+
+  <!-- ---------- BOTTOM NAV ---------- -->
+  <nav class="bottomnav" id="bottomnav">
+    <button class="navbtn active" data-target="dashboard">
+      <svg viewBox="0 0 24 24"><path d="M3 12h4v9H3zM10 3h4v18h-4zM17 8h4v13h-4z"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="navbtn" data-target="workout">
+      <svg viewBox="0 0 24 24"><path d="M2 12h2M20 12h2M6 8v8M18 8v8M6 12h12" stroke-linecap="round"/></svg>
+      <span>Train</span>
+    </button>
+    <button class="navbtn navbtn-fab" data-target="checkin">
+      <span class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg></span>
+      <span>Log</span>
+    </button>
+    <button class="navbtn" data-target="nutrition">
+      <svg viewBox="0 0 24 24"><path d="M18 2c-2 2-4 5-4 9a4 4 0 0 0 4 4c0-4 2-9 4-11-2-1-3-2-4-2zM8 8c0-2 1.5-4 3-5-1 4-1.5 6-.5 8.5C9.5 13.5 8 15 8 17.5A6.5 6.5 0 0 0 14.5 24 6.5 6.5 0 0 0 8 17.5"/></svg>
+      <span>Fuel</span>
+    </button>
+    <button class="navbtn" data-target="more">
+      <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      <span>More</span>
+    </button>
+  </nav>
+
+  <!-- ---------- MORE SHEET ---------- -->
+  <div class="sheet-backdrop" id="moreBackdrop"></div>
+  <div class="sheet" id="moreSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-grid">
+      <button class="sheet-item" data-target="progress">
+        <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Progress</span>
+      </button>
+      <button class="sheet-item" data-target="calendar">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        <span>Calendar</span>
+      </button>
+      <button class="sheet-item" data-target="photos">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 17l-5-5-4 4-3-3-6 6"/></svg>
+        <span>Photos</span>
+      </button>
+      <button class="sheet-item" data-target="coach">
+        <svg viewBox="0 0 24 24"><path d="M12 2l2.4 5.8L20 9l-5 4.4L16.5 20 12 16.5 7.5 20 9 13.4 4 9l5.6-1.2z"/></svg>
+        <span>Coach</span>
+      </button>
+      <button class="sheet-item" data-target="settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1z"/></svg>
+        <span>Settings</span>
+      </button>
+      <button class="sheet-item" data-action="export">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Export Data</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ---------- TOAST ---------- -->
+  <div class="toast" id="toast"></div>
+
+</div>
+
+<script src="js/storage.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/workoutData.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/checkin.js"></script>
+<script src="js/workout.js"></script>
+<script src="js/nutrition.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/photos.js"></script>
+<script src="js/coach.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
