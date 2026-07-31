@@ -12,14 +12,24 @@ const M89_KEYS = {
 
 const DEFAULT_SETTINGS = {
   goalWeight: 89,
-  startWeight: null,
-  calorieTarget: 2200,
-  proteinTarget: 180,
-  waterTarget: 3.5,   // liters
+  startWeight: 98,
+
+  calorieTarget: 1800,
+  proteinTarget: 190,
+
+  waterTarget: 4,
+
   stepTarget: 10000,
-  sleepTarget: 8,     // hours
-  missionDays: 20,
-  units: 'kg'
+
+  sleepTarget: 8,
+
+  units: 'kg',
+
+  height: 175,
+
+  birthdayGoal: "2026-11-23",
+
+  projectName: "Mission 89"
 };
 
 const Store = {

@@ -51,7 +51,17 @@ const App = {
     const settings = Store.getSettings();
     const streak = U.computeStreak();
     document.getElementById('streakCount').textContent = streak;
-    document.getElementById('headerDayLabel').textContent = `Day ${U.missionDayCapped(settings.missionDays)} of ${settings.missionDays}`;
+   const meta = Store.getMeta();
+const start = meta.startDate ? new Date(meta.startDate) : new Date();
+const today = new Date();
+
+const days = Math.max(
+  1,
+  Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1
+);
+
+document.getElementById('headerDayLabel').textContent =
+`Mission Day ${days}`;
     if(this.currentView === 'dashboard') Dashboard.render();
   },
 
