@@ -2,21 +2,21 @@
    MISSION 89 — Design tokens
    ========================================================================== */
 :root{
-  --bg:            #08090a;
-  --bg-soft:       #0d0f10;
-  --elev-1:        #131516;
-  --elev-2:        #191c1d;
+  --bg:            #07060d;
+  --bg-soft:       #0d0a18;
+  --elev-1:        #151126;
+  --elev-2:        #1c1732;
   --card:          rgba(255,255,255,0.035);
   --card-strong:   rgba(255,255,255,0.055);
   --card-border:   rgba(255,255,255,0.08);
   --card-border-strong: rgba(255,255,255,0.14);
   --glass-blur:    18px;
 
-  --emerald:       #10b981;
-  --emerald-light: #3ddc9a;
-  --emerald-dark:  #067a56;
-  --emerald-glow:  rgba(16,185,129,.38);
-  --emerald-wash:  rgba(16,185,129,.10);
+  --emerald:       #7c5cff;
+  --emerald-light: #9b8cff;
+  --emerald-dark:  #4f35c8;
+  --emerald-glow:  rgba(124,92,255,.42);
+  --emerald-wash:  rgba(124,92,255,.12);
 
   --white:         #f5f7f6;
   --text-1:        #f5f7f6;
@@ -27,7 +27,7 @@
   --red-wash:      rgba(239,68,68,.12);
   --yellow:        #eab308;
   --yellow-wash:   rgba(234,179,8,.12);
-  --blue:          #38bdf8;
+  --blue:          #5ee7ff;
 
   --radius-xl:     28px;
   --radius-lg:     22px;
@@ -71,8 +71,8 @@ body::before{
   content:"";
   position:fixed; inset:0; z-index:0; pointer-events:none;
   background:
-    radial-gradient(720px 420px at 15% -8%, rgba(16,185,129,.14), transparent 60%),
-    radial-gradient(600px 500px at 110% 15%, rgba(16,185,129,.08), transparent 55%);
+    radial-gradient(720px 420px at 15% -8%, rgba(124,92,255,.16), transparent 60%),
+    radial-gradient(600px 500px at 110% 15%, rgba(46,196,255,.08), transparent 55%);
 }
 
 :focus-visible{ outline:2px solid var(--emerald-light); outline-offset:2px; border-radius:6px; }
@@ -711,3 +711,31 @@ body::before{
 .quest-reward svg{ width:21px; height:21px; color:var(--emerald-light); }
 .quest-penalty{ margin-top:10px; padding:9px 11px; border-radius:11px; background:var(--red-wash); color:#fca5a5; font-size:11px; font-weight:800; }
 @media (min-width:640px){ .quest-list{ display:grid; grid-template-columns:1fr 1fr; } }
+
+
+/* ==========================================================================
+   v1.2 — Manual Mission Initialization
+   ========================================================================== */
+.system-init-shell{ min-height:calc(100vh - 190px); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:26px 4px 18px; }
+.system-init-shell h1{ margin-top:8px; font-size:30px; line-height:1.05; letter-spacing:-.04em; }
+.system-init-shell>p{ max-width:430px; margin:13px auto 20px; color:var(--text-2); font-size:14px; line-height:1.55; }
+.system-init-orb{ position:relative; width:118px; height:118px; display:grid; place-items:center; margin-bottom:22px; border-radius:50%; background:radial-gradient(circle at 38% 30%,rgba(155,140,255,.38),rgba(79,53,200,.08) 48%,transparent 70%); border:1px solid rgba(155,140,255,.3); box-shadow:0 0 45px rgba(124,92,255,.22), inset 0 0 28px rgba(124,92,255,.12); }
+.system-init-orb::before,.system-init-orb::after{ content:""; position:absolute; border-radius:50%; border:1px solid rgba(155,140,255,.2); }
+.system-init-orb::before{ inset:-10px; animation:systemPulse 2.6s ease-in-out infinite; }
+.system-init-orb::after{ inset:15px; border-style:dashed; animation:systemSpin 10s linear infinite; }
+.system-init-orb span{ font-size:21px; font-weight:900; letter-spacing:.08em; color:var(--emerald-light); text-shadow:0 0 18px var(--emerald-glow); }
+.system-init-card{ width:100%; max-width:470px; margin-bottom:16px; padding:8px 18px; text-align:left; }
+.system-init-row{ display:flex; justify-content:space-between; gap:20px; padding:13px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+.system-init-row span{ color:var(--text-3); font-size:12px; font-weight:750; }
+.system-init-row b{ font-size:13px; }
+.system-init-note{ margin:13px 0 6px; padding:11px 12px; border-radius:12px; background:var(--emerald-wash); color:var(--text-2); font-size:11px; line-height:1.45; }
+.system-start-btn{ max-width:470px; margin-top:2px; }
+.system-init-shell>.btn-ghost{ max-width:470px; margin-top:10px; }
+.system-init-warning{ margin-top:13px; color:var(--text-3); font-size:10.5px; font-weight:700; }
+.mission-control-card{ display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.mission-control-card>div{ display:flex; flex-direction:column; gap:3px; }
+.mission-control-card b{ font-size:14px; }
+.mission-control-card span{ color:var(--text-3); font-size:11.5px; }
+@keyframes systemPulse{ 0%,100%{ transform:scale(.98); opacity:.45; } 50%{ transform:scale(1.05); opacity:1; } }
+@keyframes systemSpin{ to{ transform:rotate(360deg); } }
+@media(max-width:480px){ .mission-control-card{ align-items:flex-start; flex-direction:column; } .mission-control-card .btn-sm{ width:100%; } }

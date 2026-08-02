@@ -48,21 +48,44 @@ const U = {
   round1(v){ return Math.round(v*10)/10; },
   uid(){ return Math.random().toString(36).slice(2,9); },
 
-  // ---- Mission day tracking ----
-  ensureMissionStarted(){
+  // ---- Mission lifecycle / day tracking ----
+  // A mission only begins after the user explicitly starts it.
+  // Legacy auto-generated start dates are ignored unless manuallyStarted is true.
+  isMissionStarted(){
     const meta = Store.getMeta();
-    if(!meta.startDate){
-      Store.saveMeta({ startDate: this.todayStr(), installedAt: new Date().toISOString() });
-    }
+    return meta.manuallyStarted === true && !!meta.startDate;
+  },
+  startMission(){
+    const now = new Date();
+    return Store.saveMeta({
+      startDate: this.todayStr(),
+      installedAt: Store.getMeta().installedAt || now.toISOString(),
+      manuallyStarted: true,
+      startedAt: now.toISOString(),
+      phaseId: 'awakening'
+    });
+  },
+  resetMissionStart(){
+    return Store.saveMeta({
+      startDate: null,
+      manuallyStarted: false,
+      startedAt: null,
+      phaseId: 'awakening'
+    });
+  },
+  ensureMissionStarted(){
+    // Kept for compatibility with older modules. It no longer auto-starts.
     return Store.getMeta();
   },
   missionDay(){
-    const meta = this.ensureMissionStarted();
+    if(!this.isMissionStarted()) return 0;
+    const meta = Store.getMeta();
     const diff = this.daysBetween(meta.startDate, this.todayStr());
-    return this.clamp(diff+1, 1, 9999);
+    return this.clamp(diff + 1, 1, 9999);
   },
   missionDayCapped(totalDays){
-    return Math.min(this.missionDay(), totalDays);
+    const day = this.missionDay();
+    return day === 0 ? 0 : Math.min(day, totalDays);
   },
 
   // ---- Toast ----
@@ -258,23 +281,24 @@ const U = {
   },
 
   totalMissionScore(settings){
-    const meta = this.ensureMissionStarted();
+    if(!this.isMissionStarted()) return 0;
+    const meta = Store.getMeta();
     const today = this.todayStr();
-    const elapsedDays = this.daysBetween(meta.startDate, today) + 1; // inclusive of today
+    const elapsedDays = Math.max(0, this.daysBetween(meta.startDate, today) + 1);
 
     let total = 0;
     let cursor = meta.startDate;
     for(let i = 0; i < elapsedDays; i++){
-      const checkin = Store.getCheckin(cursor);
-      total += this.computeDayScore(checkin, settings);
+      total += this.computeDayScore(Store.getCheckin(cursor), settings);
       cursor = this.addDays(cursor, 1);
     }
     return total;
   },
 
-expectedMissionScore(settings){
-    const meta = this.ensureMissionStarted();
-    const elapsedDays = Math.max(1, this.daysBetween(meta.startDate, this.todayStr()) + 1);
+  expectedMissionScore(settings){
+    if(!this.isMissionStarted()) return 0;
+    const meta = Store.getMeta();
+    const elapsedDays = Math.max(0, this.daysBetween(meta.startDate, this.todayStr()) + 1);
     return elapsedDays * 100;
   },
 
@@ -290,6 +314,22 @@ expectedMissionScore(settings){
   },
 
   missionStats(settings){
+    if(!this.isMissionStarted()){
+      return {
+        started:false,
+        totalScore:0, expectedScore:0, completion:0,
+        earnedDays:0, expectedDays:0, daysBehind:0,
+        missionDay:0, actualMissionDay:0,
+        remainingDays:settings.missionDays,
+        remainingScore:settings.missionDays * 100,
+        requiredAverage:100,
+        currentAverage:0,
+        projectedFinishDay:Infinity,
+        projectedDelay:Infinity,
+        forecastStatus:'AWAITING START',
+        recoveryStatus:'NOT ACTIVE'
+      };
+    }
     const totalScore = this.totalMissionScore(settings);
     const expectedScore = this.expectedMissionScore(settings);
     const actualMissionDay = this.missionDay();
@@ -337,6 +377,7 @@ expectedMissionScore(settings){
     else recoveryStatus = 'AHEAD';
 
     return {
+      started:true,
       totalScore,
       expectedScore,
       completion,

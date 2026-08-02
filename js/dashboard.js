@@ -5,6 +5,10 @@
 const Dashboard = {
   render(){
     const settings = Store.getSettings();
+    if(!U.isMissionStarted()){
+      this._renderPreStart(settings);
+      return;
+    }
     const mission = U.missionStats(settings);
     const physique = U.physiqueProgress(settings);
     const today = U.todayStr();
@@ -130,6 +134,32 @@ const Dashboard = {
       const ring = document.getElementById('scoreRingCircle');
       if(ring) ring.style.strokeDashoffset = offset;
     });
+  },
+
+  _renderPreStart(settings){
+    document.getElementById('streakCount').textContent = '0';
+    document.getElementById('headerDayLabel').textContent = 'Mission Awaiting Start';
+
+    const html = `
+      <section class="system-init-shell">
+        <div class="system-init-orb" aria-hidden="true"><span>M89</span></div>
+        <span class="eyebrow">System Offline</span>
+        <h1>Phase I: Awakening</h1>
+        <p>The counter will not move until you choose to begin. Configure your targets, then initialize the mission when you are ready to execute.</p>
+
+        <div class="card system-init-card">
+          <div class="system-init-row"><span>Starting weight</span><b>${U.formatNum(settings.startWeight,1)} kg</b></div>
+          <div class="system-init-row"><span>First checkpoint</span><b>${U.formatNum(settings.goalWeight,1)} kg</b></div>
+          <div class="system-init-row"><span>Minimum phase duration</span><b>${settings.missionDays} days</b></div>
+          <div class="system-init-note">Time alone will not clear the phase. The System will eventually require minimum execution standards before progression.</div>
+        </div>
+
+        <button class="btn btn-primary system-start-btn" onclick="App.startMission()">Initialize Mission</button>
+        <button class="btn btn-ghost" onclick="App.navigate('settings')">Configure Targets</button>
+        <small class="system-init-warning">Once initialized, today becomes Mission Day 1.</small>
+      </section>
+    `;
+    document.getElementById('dashboardContent').innerHTML = html;
   },
 
   _nextAction(objectives){

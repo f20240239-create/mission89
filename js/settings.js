@@ -4,6 +4,8 @@
 const Settings = {
   render(){
     const s = Store.getSettings();
+    const missionStarted = U.isMissionStarted();
+    const meta = Store.getMeta();
 
     const html = `
       <div>
@@ -69,6 +71,17 @@ const Settings = {
 
       <button class="btn btn-primary" id="saveSettingsBtn">Save Changes</button>
 
+      <span class="section-label">Mission Control</span>
+      <div class="card mission-control-card">
+        <div>
+          <b>${missionStarted ? `Mission active · Day ${U.missionDay()}` : 'Mission not started'}</b>
+          <span>${missionStarted ? `Started ${U.prettyDate(meta.startDate)}` : 'The counter remains frozen until you initialize it.'}</span>
+        </div>
+        ${missionStarted
+          ? '<button class="btn btn-outline btn-sm" id="resetMissionStartBtn">Return to Pre-start</button>'
+          : '<button class="btn btn-primary btn-sm" id="startMissionBtn">Initialize Mission</button>'}
+      </div>
+
       <span class="section-label">Data</span>
       <div class="card settings-list">
         <div class="settings-row" style="cursor:pointer;" id="exportRow">
@@ -86,7 +99,7 @@ const Settings = {
         <button class="btn btn-danger" id="resetBtn">Erase All Data</button>
       </div>
 
-      <div class="app-version">Mission 89 · v1.1.0 · All data stored on-device</div>
+      <div class="app-version">Mission 89 · v1.2.0 · All data stored on-device</div>
       <input type="file" accept="application/json" id="importInput" class="hidden">
     `;
 
@@ -109,6 +122,11 @@ const Settings = {
       U.toast('Settings saved ✓');
       if(typeof App !== 'undefined') App.refreshHeader();
     };
+
+    const startMissionBtn = document.getElementById('startMissionBtn');
+    if(startMissionBtn) startMissionBtn.onclick = () => App.startMission();
+    const resetMissionStartBtn = document.getElementById('resetMissionStartBtn');
+    if(resetMissionStartBtn) resetMissionStartBtn.onclick = () => App.resetMissionStart();
 
     document.getElementById('exportRow').onclick = () => this._export();
 

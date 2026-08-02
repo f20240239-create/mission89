@@ -39,3 +39,9 @@ Mission Progress Refactor
 - Added quest completion, progress and penalty states
 - Reordered Dashboard around action first, analytics second
 - Updated PWA cache and app metadata
+
+## v1.2.0 — Initialization Protocol
+- Added explicit manual mission start.
+- Prevented installation/opening from consuming mission days.
+- Added pre-start dashboard and Mission Control settings.
+- Added legacy-start migration and initial purple-blue System theme.

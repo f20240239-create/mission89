@@ -67,7 +67,7 @@ const Store = {
 
   // ---- Meta (mission start date etc.) ----
   getMeta(){
-    return Object.assign({ startDate: null, installedAt: null }, this._read(M89_KEYS.META, {}));
+    return Object.assign({ startDate: null, installedAt: null, manuallyStarted: false, phaseId: 'awakening' }, this._read(M89_KEYS.META, {}));
   },
   saveMeta(patch){
     const merged = Object.assign({}, this.getMeta(), patch);

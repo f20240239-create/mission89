@@ -2,7 +2,7 @@
    MISSION 89 — Service Worker
    Cache-first app shell so the app works fully offline after first load.
    ========================================================================== */
-const CACHE_NAME = 'mission89-cache-v2';
+const CACHE_NAME = 'mission89-cache-v3';
 const APP_SHELL = [
   './',
   './index.html',
