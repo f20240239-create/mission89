@@ -6,6 +6,7 @@ const Progress = {
     const settings = Store.getSettings();
     const checkins = Store.getCheckins();
     const meta = Store.getMeta();
+    const mission = U.missionStats(settings);
 
     const weightEntries = Object.values(checkins)
       .filter(c => c.weight != null)
@@ -77,6 +78,24 @@ const Progress = {
         </div>
       </div>
 
+      <span class="section-label">What If?</span>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">Average score per day, rest of the mission</label>
+          <div class="stepper">
+            <button data-step="-5" data-target="whatifInput">−</button>
+            <input type="number" id="whatifInput" value="${mission.currentAverage}" min="0" max="100">
+            <button data-step="5" data-target="whatifInput">+</button>
+          </div>
+        </div>
+        <div class="flex-row" style="gap:8px;margin:10px 0 4px;">
+          <button class="btn btn-ghost" data-preset="100" style="padding:8px 12px;font-size:12px;">Perfect</button>
+          <button class="btn btn-ghost" data-preset="${mission.currentAverage}" style="padding:8px 12px;font-size:12px;">Current Pace</button>
+          <button class="btn btn-ghost" data-preset="40" style="padding:8px 12px;font-size:12px;">Rough Patch</button>
+        </div>
+        <div class="forecast-grid mt-12" id="whatifResult"></div>
+      </div>
+
       <span class="section-label">History</span>
       <div class="card" style="padding:6px 14px;">
         ${historyHtml || `<div class="empty-state">${ICONS.bolt}<b>No entries yet</b><span>Log your weight in Check-in to start tracking.</span></div>`}
@@ -84,6 +103,57 @@ const Progress = {
     `;
 
     document.getElementById('progressContent').innerHTML = html;
+    this._bind();
+  },
+
+  _bind(){
+    const whatifInput = document.getElementById('whatifInput');
+    if(!whatifInput) return;
+
+    this._renderWhatIf(parseFloat(whatifInput.value) || 0);
+
+    document.querySelectorAll('#progressContent .stepper button[data-target="whatifInput"]').forEach(btn => {
+      btn.onclick = () => {
+        const step = parseFloat(btn.dataset.step);
+        const val = U.clamp((parseFloat(whatifInput.value) || 0) + step, 0, 100);
+        whatifInput.value = val;
+        this._renderWhatIf(val);
+      };
+    });
+
+    whatifInput.addEventListener('input', () => {
+      const val = U.clamp(parseFloat(whatifInput.value) || 0, 0, 100);
+      this._renderWhatIf(val);
+    });
+
+    document.querySelectorAll('#progressContent [data-preset]').forEach(btn => {
+      btn.onclick = () => {
+        const val = U.clamp(parseFloat(btn.dataset.preset) || 0, 0, 100);
+        whatifInput.value = val;
+        this._renderWhatIf(val);
+      };
+    });
+  },
+
+  _renderWhatIf(value){
+    const settings = Store.getSettings();
+    const sim = U.simulateWhatIf(settings, value);
+    const el = document.getElementById('whatifResult');
+    if(!el) return;
+    el.innerHTML = `
+      <div class="forecast-stat">
+        <span>Status</span>
+        <b class="num">${sim.status}</b>
+      </div>
+      <div class="forecast-stat">
+        <span>Projected Finish</span>
+        <b class="num">${sim.projectedFinishDay === Infinity ? '—' : `Day ${sim.projectedFinishDay}`}</b>
+      </div>
+      <div class="forecast-stat">
+        <span>Mission Success</span>
+        <b class="num">${sim.missionSuccessPercent}%</b>
+      </div>
+    `;
   },
 
   _buildChart(entries, settings){

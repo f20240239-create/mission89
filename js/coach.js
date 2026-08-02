@@ -11,9 +11,13 @@ const Coach = {
     const streak = U.computeStreak();
     const checkins = Store.getCheckins();
     const weightEntries = Object.values(checkins).filter(c=>c.weight!=null).sort((a,b)=>a.date.localeCompare(b.date));
+    const physique = U.physiqueProgress(settings);
+    const recentAvg = this._recentExecutionAverage(settings, checkins);
 
     const headline = this._headline(checkin, score, streak);
-    const insights = this._insights(checkin, settings, weightEntries, streak);
+    const trendInsight = this._trendInsight(physique, recentAvg, settings);
+    const dailyInsights = this._insights(checkin, settings, weightEntries, streak);
+    const insights = trendInsight ? [trendInsight, ...dailyInsights] : dailyInsights;
 
     const html = `
       <div>
@@ -38,6 +42,44 @@ const Coach = {
     `;
 
     document.getElementById('coachContent').innerHTML = html;
+  },
+
+  // Last 7 logged check-ins' Execution Score average — smooths out one bad
+  // or one great day so the trend comparison below isn't noisy.
+  _recentExecutionAverage(settings, checkins){
+    const dates = Object.keys(checkins).filter(d => checkins[d]).sort().slice(-7);
+    if(dates.length === 0) return null;
+    const scores = dates.map(d => U.computeDayScore(checkins[d], settings));
+    return Math.round(scores.reduce((a,b)=>a+b,0) / scores.length);
+  },
+
+  // Compares recent Execution Score against Physique Progress — this is the
+  // insight that catches "I'm doing everything right but not seeing results"
+  // (plan needs adjusting) vs. "results are fine despite inconsistency" etc.
+  _trendInsight(physique, recentAvg, settings){
+    if(physique.status === 'NOT ENOUGH DATA' || recentAvg == null) return null;
+
+    if(recentAvg >= 75 && physique.status === 'REVERSING'){
+      return { type:'bad', title:'Execution is strong, but the scale disagrees',
+        body:`You're averaging ${recentAvg}/100 on execution, yet weight is trending up ${Math.abs(physique.weeklyTrend)}kg/week. This usually means the plan's targets need adjusting — not your discipline. Consider tightening calories or steps.` };
+    }
+    if(recentAvg >= 75 && physique.status === 'STALLED'){
+      return { type:'warn', title:'Great execution, weight has stalled',
+        body:`Averaging ${recentAvg}/100 but the scale has barely moved (${physique.weeklyTrend >= 0 ? '+' : ''}${physique.weeklyTrend}kg/week). You're clearly capable of the consistency — try tightening calories or adding activity.` };
+    }
+    if(recentAvg >= 75 && physique.status === 'ON TRACK'){
+      return { type:'good', title:'Execution and physique are aligned',
+        body:`${recentAvg}/100 execution average and weight trending toward your ${settings.goalWeight}kg goal at ${physique.weeklyTrend}kg/week. This is exactly the combination that gets you there on schedule.` };
+    }
+    if(recentAvg < 50 && physique.status === 'ON TRACK'){
+      return { type:'good', title:'Weight is moving despite inconsistent logging',
+        body:`Physique Progress is ON TRACK even with a ${recentAvg}/100 execution average. Imagine where you'd be with tighter consistency.` };
+    }
+    if(recentAvg < 50 && (physique.status === 'REVERSING' || physique.status === 'STALLED')){
+      return { type:'bad', title:'Execution and physique are both off',
+        body:`Recent execution average is ${recentAvg}/100 and weight isn't trending toward goal. Fixing consistency first is the highest-leverage move here.` };
+    }
+    return null;
   },
 
   _headline(checkin, score, streak){

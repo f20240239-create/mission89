@@ -86,7 +86,7 @@ const Settings = {
         <button class="btn btn-danger" id="resetBtn">Erase All Data</button>
       </div>
 
-      <div class="app-version">Mission 89 · v1.0.0 · All data stored on-device</div>
+      <div class="app-version">Mission 89 · v1.1.0 · All data stored on-device</div>
       <input type="file" accept="application/json" id="importInput" class="hidden">
     `;
 
@@ -98,12 +98,12 @@ const Settings = {
     document.getElementById('saveSettingsBtn').onclick = () => {
       const patch = {
         goalWeight: parseFloat(document.getElementById('s_goalWeight').value) || 89,
-        missionDays: parseInt(document.getElementById('s_missionDays').value) || 20,
-        calorieTarget: parseInt(document.getElementById('s_calorieTarget').value) || 2200,
-        proteinTarget: parseInt(document.getElementById('s_proteinTarget').value) || 180,
-        waterTarget: parseFloat(document.getElementById('s_waterTarget').value) || 3.5,
-        stepTarget: parseInt(document.getElementById('s_stepTarget').value) || 10000,
-        sleepTarget: parseFloat(document.getElementById('s_sleepTarget').value) || 8
+        missionDays: Math.max(1, parseInt(document.getElementById('s_missionDays').value) || 20),
+        calorieTarget: Math.max(1, parseInt(document.getElementById('s_calorieTarget').value) || 2200),
+        proteinTarget: Math.max(0, parseInt(document.getElementById('s_proteinTarget').value) || 180),
+        waterTarget: Math.max(0.1, parseFloat(document.getElementById('s_waterTarget').value) || 3.5),
+        stepTarget: Math.max(0, parseInt(document.getElementById('s_stepTarget').value) || 10000),
+        sleepTarget: Math.max(0.5, parseFloat(document.getElementById('s_sleepTarget').value) || 8)
       };
       Store.saveSettings(patch);
       U.toast('Settings saved ✓');

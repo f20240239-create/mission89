@@ -23,6 +23,8 @@ const DEFAULT_SETTINGS = {
 
   sleepTarget: 8,
 
+  missionDays: 20,
+
   units: 'kg',
 
   height: 175,
