@@ -1,3 +1,8 @@
+
+## v1.1.1 — ASCEND Brand Identity
+- Replaced the legacy green M89 icon with the approved dark blue-purple ASCEND emblem.
+- Added complete PWA icon sizes, maskable icon, favicon, splash branding and header branding.
+- Updated service-worker cache to deploy the new visual identity without resetting user data.
 ## v1.1.0 — Adaptive Training
 
 ASCEND can now modify workouts without losing the purpose of the program. Exercise substitutions are ranked by movement pattern, primary muscle, difficulty and available equipment. Changes can be applied for today only or saved permanently to the weekday routine. Existing data is migrated in place; no reset is required.

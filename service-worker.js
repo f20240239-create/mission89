@@ -1,11 +1,11 @@
 /* ASCEND — Service Worker v1 */
-const CACHE_NAME = 'ascend-v1.1.0';
+const CACHE_NAME = 'ascend-v1.1.1';
 const APP_SHELL = [
-  './','./index.html','./manifest.json','./css/style.css?v=1.1.0',
-  './js/storage.js?v=1.1.0','./js/utils.js?v=1.1.0','./js/workoutData.js?v=1.1.0','./js/dashboard.js?v=1.1.0',
-  './js/checkin.js?v=1.1.0','./js/workout.js?v=1.1.0','./js/nutrition.js?v=1.1.0','./js/progress.js?v=1.1.0',
-  './js/calendar.js?v=1.1.0','./js/photos.js?v=1.1.0','./js/coach.js?v=1.1.0','./js/settings.js?v=1.1.0','./js/onboarding.js?v=1.1.0','./js/app.js?v=1.1.0',
-  './icons/icon-192.png','./icons/icon-512.png','./icons/favicon.png'
+  './','./index.html','./manifest.json','./css/style.css?v=1.1.1',
+  './js/storage.js?v=1.1.1','./js/utils.js?v=1.1.1','./js/workoutData.js?v=1.1.1','./js/dashboard.js?v=1.1.1',
+  './js/checkin.js?v=1.1.1','./js/workout.js?v=1.1.1','./js/nutrition.js?v=1.1.1','./js/progress.js?v=1.1.1',
+  './js/calendar.js?v=1.1.1','./js/photos.js?v=1.1.1','./js/coach.js?v=1.1.1','./js/settings.js?v=1.1.1','./js/onboarding.js?v=1.1.1','./js/app.js?v=1.1.1',
+  './icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/favicon.png','./icons/ascend-mark.png'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));

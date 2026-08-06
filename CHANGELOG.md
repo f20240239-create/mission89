@@ -1,3 +1,8 @@
+
+## v1.1.1 — ASCEND Brand Identity
+- Replaced the legacy green M89 icon with the approved dark blue-purple ASCEND emblem.
+- Added complete PWA icon sizes, maskable icon, favicon, splash branding and header branding.
+- Updated service-worker cache to deploy the new visual identity without resetting user data.
 ## v1.1.0
 - Added adaptive exercise replacement with movement-pattern approval.
 - Added easier/harder variations, machine-busy and unavailable-equipment flows.
