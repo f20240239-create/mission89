@@ -1,17 +1,27 @@
 /* ==========================================================================
-   MISSION 89 — Settings
+   ASCEND — Settings
    ========================================================================== */
 const Settings = {
   render(){
     const s = Store.getSettings();
+    const campaign = Store.getActiveCampaign();
     const missionStarted = U.isMissionStarted();
     const meta = Store.getMeta();
+    const phase = U.getPhaseStatus(s);
+    const archived = Store.getArchivedCampaigns();
 
     const html = `
       <div>
         <div class="page-title">Settings</div>
-        <div class="page-sub">Tune Mission 89 to your targets</div>
+        <div class="page-sub">Configure ASCEND and your active campaign</div>
       </div>
+
+      <span class="section-label">Operator</span>
+      <div class="card operator-settings-card"><div><b>${Store.isOperatorInitialized() ? (Store.getOperator().name || 'Operator') : 'Profile incomplete'}</b><span>${Store.isOperatorInitialized() ? 'Permanent profile synchronized' : 'Complete initialization before beginning a campaign'}</span></div><button class="btn btn-outline btn-sm" id="editOperatorBtn">${Store.isOperatorInitialized() ? 'Review Profile' : 'Initialize'}</button></div>
+
+      <span class="section-label">Active Campaign</span>
+      <div class="card campaign-settings-card"><span>Campaign</span><b>${campaign.name}</b><small>Phase ${phase.number} · ${phase.name} · ${campaign.status.toUpperCase()}</small></div>
+      <div class="card campaign-actions-card"><button class="btn btn-outline btn-sm" id="newCampaignBtn">New Campaign</button><span>${archived.length} archived campaign${archived.length===1?'':'s'}</span></div>
 
       <span class="section-label">Body Goal</span>
       <div class="card settings-list">
@@ -23,7 +33,7 @@ const Settings = {
           </div>
         </div>
         <div class="settings-row">
-          <div class="settings-row-label">${rowIcon('flag')}<span>Mission length</span></div>
+          <div class="settings-row-label">${rowIcon('flag')}<span>Minimum phase duration</span></div>
           <div class="flex-row">
             <input type="number" class="input" id="s_missionDays" style="width:64px;padding:8px 10px;text-align:right;" value="${s.missionDays}">
             <span class="unit-tag">days</span>
@@ -71,15 +81,15 @@ const Settings = {
 
       <button class="btn btn-primary" id="saveSettingsBtn">Save Changes</button>
 
-      <span class="section-label">Mission Control</span>
+      <span class="section-label">Campaign Control</span>
       <div class="card mission-control-card">
         <div>
-          <b>${missionStarted ? `Mission active · Day ${U.missionDay()}` : 'Mission not started'}</b>
-          <span>${missionStarted ? `Started ${U.prettyDate(meta.startDate)}` : 'The counter remains frozen until you initialize it.'}</span>
+          <b>${missionStarted ? `Phase ${phase.number} active · Day ${U.missionDay()}` : 'Campaign not started'}</b>
+          <span>${missionStarted ? `Started ${U.prettyDate(meta.startDate)}` : meta.previousStartDate ? `Previous automatic counter (${U.prettyDate(meta.previousStartDate)}) was frozen. Initialize when ready.` : 'The counter remains frozen until you initialize it.'}</span>
         </div>
         ${missionStarted
           ? '<button class="btn btn-outline btn-sm" id="resetMissionStartBtn">Return to Pre-start</button>'
-          : '<button class="btn btn-primary btn-sm" id="startMissionBtn">Initialize Mission</button>'}
+          : '<button class="btn btn-primary btn-sm" id="startMissionBtn">Initialize Campaign</button>'}
       </div>
 
       <span class="section-label">Data</span>
@@ -99,7 +109,7 @@ const Settings = {
         <button class="btn btn-danger" id="resetBtn">Erase All Data</button>
       </div>
 
-      <div class="app-version">Mission 89 · v1.2.0 · All data stored on-device</div>
+      <div class="app-version">ASCEND · v${M89_VERSION} · All data stored on-device</div>
       <input type="file" accept="application/json" id="importInput" class="hidden">
     `;
 
@@ -119,9 +129,16 @@ const Settings = {
         sleepTarget: Math.max(0.5, parseFloat(document.getElementById('s_sleepTarget').value) || 8)
       };
       Store.saveSettings(patch);
+      Store.saveCampaign({ ...Store.getActiveCampaign(), goalWeight:patch.goalWeight, minimumDays:patch.missionDays });
       U.toast('Settings saved ✓');
       if(typeof App !== 'undefined') App.refreshHeader();
     };
+
+    const newCampaignBtn = document.getElementById('newCampaignBtn');
+    if(newCampaignBtn) newCampaignBtn.onclick = () => App.createCampaign();
+
+    const editOperatorBtn = document.getElementById('editOperatorBtn');
+    if(editOperatorBtn) editOperatorBtn.onclick = () => Onboarding.start();
 
     const startMissionBtn = document.getElementById('startMissionBtn');
     if(startMissionBtn) startMissionBtn.onclick = () => App.startMission();
@@ -134,7 +151,7 @@ const Settings = {
     document.getElementById('importInput').onchange = (e) => this._import(e);
 
     document.getElementById('resetBtn').onclick = () => {
-      if(confirm('This will permanently erase all Mission 89 data on this device. This cannot be undone. Continue?')){
+      if(confirm('This will permanently erase all ASCEND data on this device. This cannot be undone. Continue?')){
         Store.wipeAll();
         U.toast('All data erased');
         setTimeout(()=> location.reload(), 600);
@@ -149,7 +166,7 @@ const Settings = {
     const a = document.createElement('a');
     const stamp = U.todayStr();
     a.href = url;
-    a.download = `mission89-backup-${stamp}.json`;
+    a.download = `ascend-backup-${stamp}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

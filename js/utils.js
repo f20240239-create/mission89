@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MISSION 89 — Utilities
+   ASCEND — Core Engine
    ========================================================================== */
 const MISSION_WEIGHTS = Object.freeze({
   calories: 20,
@@ -10,6 +10,9 @@ const MISSION_WEIGHTS = Object.freeze({
   workout: 16,
   cardio: 8
 });
+
+const ASCEND_VERSION = '1.0.1';
+const M89_VERSION = ASCEND_VERSION;
 
 const U = {
   todayStr(){ return this.toDateStr(new Date()); },
@@ -48,6 +51,20 @@ const U = {
   round1(v){ return Math.round(v*10)/10; },
   uid(){ return Math.random().toString(36).slice(2,9); },
 
+  // ---- One-time app migration ----
+  migrate(){
+    const appState=Store.getAppState();
+    if((appState.migration||0)<4){
+      const meta=Store.getMeta();
+      Store.saveMeta({ previousStartDate:meta.startDate||meta.previousStartDate||null, startDate:null, startedAt:null, manuallyStarted:false, lifecycleVersion:3, phaseId:'awakening', phaseStartedAt:null });
+      Store.getCampaigns();
+      Store.saveAppState({ version:ASCEND_VERSION, migration:4, migratedAt:new Date().toISOString() });
+      return true;
+    }
+    if(appState.version!==ASCEND_VERSION) Store.saveAppState({version:ASCEND_VERSION});
+    return false;
+  },
+
   // ---- Mission lifecycle / day tracking ----
   // A mission only begins after the user explicitly starts it.
   // Legacy auto-generated start dates are ignored unless manuallyStarted is true.
@@ -62,7 +79,8 @@ const U = {
       installedAt: Store.getMeta().installedAt || now.toISOString(),
       manuallyStarted: true,
       startedAt: now.toISOString(),
-      phaseId: 'awakening'
+      phaseId: 'awakening',
+      phaseStartedAt: this.todayStr()
     });
   },
   resetMissionStart(){
@@ -70,7 +88,8 @@ const U = {
       startDate: null,
       manuallyStarted: false,
       startedAt: null,
-      phaseId: 'awakening'
+      phaseId: 'awakening',
+      phaseStartedAt: null
     });
   },
   ensureMissionStarted(){
@@ -395,6 +414,142 @@ const U = {
       forecastStatus,
       recoveryStatus
     };
+  },
+
+
+  // ---- Campaign + Phase Engine ----
+  getCampaignState(settings){
+    const campaign=Store.getActiveCampaign();
+    const phase=this.getPhaseStatus(settings);
+    const mission=this.missionStats(settings);
+    const physique=this.physiqueProgress(settings);
+    const complete=phase.cleared && physique.currentWeight!=null && (
+      campaign.goalWeight <= campaign.startWeight
+        ? physique.currentWeight <= campaign.goalWeight
+        : physique.currentWeight >= campaign.goalWeight
+    );
+    return { campaign, phase, mission, physique, complete, status:complete?'COMPLETE':campaign.status.toUpperCase() };
+  },
+
+  getPhaseStatus(settings){
+    const campaign=Store.getActiveCampaign();
+    const phases=Array.isArray(campaign.phases)&&campaign.phases.length ? campaign.phases : DEFAULT_PHASES;
+    const meta=Store.getMeta();
+    const currentId=meta.phaseId||campaign.currentPhaseId||phases[0].id;
+    const phaseIndex=Math.max(0,phases.findIndex(p=>p.id===currentId));
+    const phase=phases[phaseIndex]||phases[0];
+    if(!this.isMissionStarted()) return { ...phase,state:'LOCKED',elapsedDays:0,requirements:[],cleared:false,completedRequirements:0,progress:0,index:phaseIndex,totalPhases:phases.length };
+
+    const start=meta.phaseStartedAt||meta.startDate;
+    const today=this.todayStr();
+    const elapsedDays=Math.max(1,this.daysBetween(start,today)+1);
+    const checkins=Store.getCheckins();
+    const dates=Object.keys(checkins).filter(d=>d>=start&&d<=today).sort();
+    const loggedDays=dates.length;
+    const scores=dates.map(d=>this.computeDayScore(checkins[d],settings));
+    const averageScore=loggedDays?Math.round(scores.reduce((a,b)=>a+b,0)/loggedDays):0;
+    const workoutDays=dates.filter(d=>checkins[d].workoutDone).length;
+    const proteinDays=dates.filter(d=>(checkins[d].protein??0)>=settings.proteinTarget).length;
+    const workoutRate=loggedDays?Math.round(workoutDays/loggedDays*100):0;
+    const proteinRate=loggedDays?Math.round(proteinDays/loggedDays*100):0;
+    const reqs=[
+      {id:'duration',label:`Complete at least ${phase.minimumDays} days`,value:Math.min(elapsedDays,phase.minimumDays),target:phase.minimumDays,met:elapsedDays>=phase.minimumDays},
+      {id:'logging',label:`Log at least ${phase.minLoggedDays} days`,value:loggedDays,target:phase.minLoggedDays,met:loggedDays>=phase.minLoggedDays},
+      {id:'execution',label:`Maintain ${phase.minAverageScore}+ average execution`,value:averageScore,target:phase.minAverageScore,met:averageScore>=phase.minAverageScore},
+      {id:'workout',label:`Train on ${phase.minWorkoutRate}% of logged days`,value:workoutRate,target:phase.minWorkoutRate,suffix:'%',met:workoutRate>=phase.minWorkoutRate},
+      {id:'protein',label:`Hit protein on ${phase.minProteinRate}% of logged days`,value:proteinRate,target:phase.minProteinRate,suffix:'%',met:proteinRate>=phase.minProteinRate}
+    ];
+    const cleared=reqs.every(r=>r.met);
+    const progress=Math.round(reqs.reduce((sum,r)=>sum+this.clamp(r.value/r.target,0,1),0)/reqs.length*100);
+    return { ...phase,index:phaseIndex,totalPhases:phases.length,state:cleared?'CLEARED':elapsedDays>=phase.minimumDays?'EXTENDED':'ACTIVE',elapsedDays,loggedDays,averageScore,workoutRate,proteinRate,requirements:reqs,cleared,completedRequirements:reqs.filter(r=>r.met).length,progress,nextPhase:phases[phaseIndex+1]||null };
+  },
+
+  advancePhase(){
+    const settings=Store.getSettings();
+    const campaign=Store.getActiveCampaign();
+    const phase=this.getPhaseStatus(settings);
+    if(!phase.cleared||!phase.nextPhase) return false;
+    Store.saveMeta({phaseId:phase.nextPhase.id,phaseStartedAt:this.todayStr()});
+    Store.saveCampaign({...campaign,currentPhaseId:phase.nextPhase.id});
+    return phase.nextPhase;
+  },
+
+  completeCampaign(){
+    const state=this.getCampaignState(Store.getSettings());
+    if(!state.complete) return false;
+    const summary={completedAt:new Date().toISOString(),finalWeight:state.physique.currentWeight,averageScore:state.mission.currentAverage,totalDays:state.mission.actualMissionDay};
+    Store.archiveCampaign(state.campaign.id,summary);
+    return summary;
+  },
+
+  // ---- Recovery Engine ----
+  // Recovery never prescribes extreme compensation. It restores the normal plan.
+  getRecoveryProtocol(settings,dateStr=this.todayStr()){
+    const daily=this.getDailyMission(settings,dateStr);
+    const mission=this.missionStats(settings);
+    const incomplete=daily.objectives.filter(o=>!o.completed).sort((a,b)=>(b.reward-b.earned)-(a.reward-a.earned));
+    if(!daily.checkin){
+      return {state:'WAITING',severity:'none',title:'Assessment pending',summary:'Log the day. The System cannot repair damage it cannot measure.',actions:[{label:'Complete today’s check-in',destination:'checkin'}],recoveryDays:0,recoverable:true,damage:0,etaImpact:0};
+    }
+    const stableFloor=80;
+    const damage=Math.max(0,stableFloor-daily.score);
+    if(damage===0){
+      return {state:'STABLE',severity:'low',title:'No recovery required',summary:`Execution ${daily.score}/100. Preserve the current trajectory.`,actions:incomplete.slice(0,2).map(o=>({label:o.title,destination:o.destination})),recoveryDays:0,recoverable:true,damage:0,etaImpact:mission.projectedDelay===Infinity?0:mission.projectedDelay};
+    }
+    const recoveryDays=Math.max(1,Math.min(7,Math.ceil(damage/18)));
+    const actions=[];
+    const push=(label,destination)=>{if(!actions.some(x=>x.label===label))actions.push({label,destination});};
+    incomplete.slice(0,3).forEach(o=>{
+      if(o.id==='calories') push('Return to the normal calorie target — do not crash diet','checkin');
+      else if(o.id==='sleep') push('Protect the next full sleep window','checkin');
+      else push(o.title,o.destination);
+    });
+    push('Resume the normal plan at the next meal','nutrition');
+    const protocol={state:'ACTIVE',severity:daily.score<40?'high':'medium',title:`Damage assessed: ${damage} points`,summary:`Recovery remains possible. Execute the protocol for ${recoveryDays} day${recoveryDays===1?'':'s'}; do not attempt to erase the setback in one day.`,actions:actions.slice(0,4),recoveryDays,recoverable:true,damage,score:daily.score,etaImpact:mission.projectedDelay===Infinity?0:mission.projectedDelay};
+    Store.saveRecoverySnapshot({date:dateStr,score:daily.score,damage,recoveryDays,state:protocol.state});
+    return protocol;
+  },
+
+  // ---- Intelligence Engine ----
+  getIntelligence(settings){
+    const checkins=Store.getCheckins();
+    const dates=Object.keys(checkins).sort().slice(-28);
+    if(!dates.length) return {dataDays:0,confidence:'LOW',bottleneck:null,strongest:null,insights:['No history yet. The System requires logged days before it can learn.'],metrics:{}};
+    const keys=['calories','protein','water','steps','sleep','workout','cardio'];
+    const aggregates={};
+    keys.forEach(k=>aggregates[k]=[]);
+    dates.forEach(date=>this.getMissionObjectives(settings,date).forEach(o=>aggregates[o.id].push(o.progress)));
+    const rates={}; Object.entries(aggregates).forEach(([k,v])=>rates[k]=v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length*100):0);
+    const ordered=Object.entries(rates).sort((a,b)=>a[1]-b[1]);
+    const bottleneck=ordered[0], strongest=ordered[ordered.length-1];
+    const scores=dates.map(d=>this.computeDayScore(checkins[d],settings));
+    const avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+    const recent=scores.slice(-7); const previous=scores.slice(-14,-7);
+    const recentAvg=recent.length?Math.round(recent.reduce((a,b)=>a+b,0)/recent.length):0;
+    const previousAvg=previous.length?Math.round(previous.reduce((a,b)=>a+b,0)/previous.length):null;
+    const trend=previousAvg==null?0:recentAvg-previousAvg;
+    const sleepPairs=dates.filter(d=>checkins[d].sleep!=null).map(d=>({sleep:Number(checkins[d].sleep),score:this.computeDayScore(checkins[d],settings)}));
+    const good=sleepPairs.filter(x=>x.sleep>=settings.sleepTarget*.9); const poor=sleepPairs.filter(x=>x.sleep<settings.sleepTarget*.75);
+    const mean=a=>a.length?a.reduce((s,x)=>s+x.score,0)/a.length:null;
+    const sleepEffect=good.length>=2&&poor.length>=2?Math.round(mean(good)-mean(poor)):null;
+    const labels={calories:'Calories',protein:'Protein',water:'Hydration',steps:'Steps',sleep:'Sleep',workout:'Training',cardio:'Cardio'};
+    const insights=[
+      `${labels[bottleneck[0]]} is the current bottleneck at ${bottleneck[1]}% adherence.`,
+      `${labels[strongest[0]]} is the strongest system at ${strongest[1]}% adherence.`,
+      trend===0?'Execution trend is stable.':`Seven-day execution is ${Math.abs(trend)} points ${trend>0?'higher':'lower'} than the previous week.`
+    ];
+    if(sleepEffect!=null) insights.push(`Your execution averages ${Math.abs(sleepEffect)} points ${sleepEffect>=0?'higher':'lower'} after adequate sleep.`);
+    return {dataDays:dates.length,confidence:dates.length>=21?'HIGH':dates.length>=7?'MEDIUM':'LOW',bottleneck:{id:bottleneck[0],label:labels[bottleneck[0]],rate:bottleneck[1]},strongest:{id:strongest[0],label:labels[strongest[0]],rate:strongest[1]},insights,metrics:{averageScore:avg,recentAverage:recentAvg,trend,sleepEffect,rates}};
+  },
+
+  getDailyBrief(settings,dateStr=this.todayStr()){
+    const campaign=Store.getActiveCampaign(), mission=this.missionStats(settings), phase=this.getPhaseStatus(settings), daily=this.getDailyMission(settings,dateStr), recovery=this.getRecoveryProtocol(settings,dateStr), intelligence=this.getIntelligence(settings);
+    const priority=daily.objectives.filter(o=>!o.completed).sort((a,b)=>(b.reward-b.earned)-(a.reward-a.earned))[0]||null;
+    let tone='Execution begins with the next action.';
+    if(daily.complete) tone='Today is cleared. Repeat it before confidence turns into comfort.';
+    else if(recovery.state==='ACTIVE') tone='Damage has been measured. Follow the protocol; momentum is recoverable.';
+    else if(daily.checkin&&daily.score>=80) tone='Trajectory is stable. The standard remains unchanged.';
+    return {campaignName:campaign.name,phaseName:phase.name,phaseState:phase.state,day:mission.actualMissionDay,score:daily.score,etaDelay:mission.projectedDelay,priority:priority?{title:priority.title,detail:priority.detail,destination:priority.destination}:null,recovery,intelligence,tone};
   },
 
   // ---- Physique Progress: is your body actually moving toward the goal? ----

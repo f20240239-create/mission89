@@ -1,13 +1,13 @@
 {
-  "name": "Mission 89",
-  "short_name": "Mission 89",
-  "description": "A real-life progression system for training, nutrition and accountability.",
+  "name": "ASCEND",
+  "short_name": "ASCEND",
+  "description": "ASCEND is a local-first personal progression system for campaigns, phases, recovery and adaptive intelligence.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#07060d",
-  "theme_color": "#090711",
+  "theme_color": "#0a0718",
   "icons": [
     {
       "src": "icons/icon-72.png",
