@@ -1,54 +1,13 @@
+# ASCEND Roadmap
 
-# Mission 89 Roadmap
+## v0.2 — FOUNDATION ✅
+Campaign identity, persistent campaign model, ASCEND branding.
 
-# Phase 1 — Foundation
+## v0.3 — RECOVERY
+Multi-day recovery protocols, damage accounting, ETA repair.
 
-- [X] GitHub
-- [X] GitHub Pages
-- [X] PWA
-- [X] Local Storage
-- [X] Dashboard
-- [X] Mission Day
-- [X] Daily Score
-- [X] Mission Engine
-- [X] Forecast
-- [X] Required Average
-- [X] Mission Status
-- [X] Adherence %
-- [X] Days Behind
+## v0.4 — INTELLIGENCE
+Pattern detection, personal experiments, adaptive priorities.
 
----
-
-# Phase 2 — Fitness
-
-- [X] Workout
-- [X] Nutrition
-- [X] Weight
-- [X] Photos
-- [X] Calendar
-
----
-
-# Phase 3 — Analytics
-
-- [ ] Graphs
-- [ ] Trends
-- [ ] Weekly Review
-- [X] Goal Prediction
-
----
-
-# Phase 4 — Coach
-
-- [ ] AI Coach
-- [ ] Weekly Feedback
-- [ ] Motivation
-- [X] Plateau Detection
-
----
-
-# Phase 5 — Cloud
-
-- [ ] Login
-- [ ] Sync
-- [ ] Backup
+## v1.0 — AWAKENING
+Stable daily-use product with campaign completion and next-campaign unlocks.
