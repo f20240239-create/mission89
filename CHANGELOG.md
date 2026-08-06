@@ -1,4 +1,11 @@
-## v1.0.1
+## v1.1.0
+- Added adaptive exercise replacement with movement-pattern approval.
+- Added easier/harder variations, machine-busy and unavailable-equipment flows.
+- Added exercise add/remove and permanent routine editing.
+- Added gym equipment memory and custom exercise classification.
+- Preserved all existing operator, campaign and training history.
+
+## v1.1.0
 
 - Rebuilt progressive overload as a performance-gated double-progression system.
 - Load increases are recommended only after every prescribed working set reaches the top of its rep range.

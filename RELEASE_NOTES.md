@@ -1,3 +1,7 @@
+## v1.1.0 — Adaptive Training
+
+ASCEND can now modify workouts without losing the purpose of the program. Exercise substitutions are ranked by movement pattern, primary muscle, difficulty and available equipment. Changes can be applied for today only or saved permanently to the weekday routine. Existing data is migrated in place; no reset is required.
+
 # ASCEND v1.0 — Daily Driver
 
 This is the first build intended for real daily use.
@@ -30,6 +34,6 @@ Mess meals cannot be measured perfectly without a scale. ASCEND deliberately lab
 
 ASCEND is local-first. Export a backup regularly, especially before clearing browser data or changing devices.
 
-## v1.0.1 — Performance-Gated Overload
+## v1.1.0 — Performance-Gated Overload
 
 Progression is now earned by performance rather than scheduled by time. ASCEND keeps the current load while total clean reps improve, recommends a load increase only after all prescribed sets reach the top of the rep range, and does not lower the target after one weak session.

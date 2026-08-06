@@ -7,7 +7,8 @@ const M89_KEYS = {
   SETTINGS:'m89_settings', CHECKINS:'m89_checkins', PHOTOS:'m89_photos', WORKOUTS:'m89_workout_log',
   META:'m89_meta', APP:'m89_app', CAMPAIGNS:'ascend_campaigns', ACTIVE_CAMPAIGN:'ascend_active_campaign',
   OPERATOR:'ascend_operator', ONBOARDING:'ascend_onboarding', RECOVERY:'ascend_recovery_history',
-  TRAINING_SESSIONS:'ascend_training_sessions', MESS_PROFILE:'ascend_mess_profile', MEAL_HISTORY:'ascend_meal_history'
+  TRAINING_SESSIONS:'ascend_training_sessions', MESS_PROFILE:'ascend_mess_profile', MEAL_HISTORY:'ascend_meal_history',
+  ROUTINE_WORKOUTS:'ascend_routine_workouts', DAY_WORKOUTS:'ascend_day_workouts', GYM_PROFILE:'ascend_gym_profile', EXERCISE_PREFS:'ascend_exercise_preferences'
 };
 
 const DEFAULT_SETTINGS = {
@@ -71,6 +72,20 @@ const Store = {
       .map(day=>({date:day.date,...day.exercises[exerciseId]}));
   },
 
+  // Adaptive workout plans. Routine overrides affect future matching weekdays; day overrides affect one date only.
+  getRoutineWorkouts(){ return this._read(M89_KEYS.ROUTINE_WORKOUTS,{}); },
+  getRoutineWorkout(dayOfWeek){ return this.getRoutineWorkouts()[String(dayOfWeek)]||null; },
+  saveRoutineWorkout(dayOfWeek,workout){ const all=this.getRoutineWorkouts(); all[String(dayOfWeek)]=Object.assign({},workout,{updatedAt:new Date().toISOString()}); this._write(M89_KEYS.ROUTINE_WORKOUTS,all); return all[String(dayOfWeek)]; },
+  clearRoutineWorkout(dayOfWeek){ const all=this.getRoutineWorkouts(); delete all[String(dayOfWeek)]; this._write(M89_KEYS.ROUTINE_WORKOUTS,all); },
+  getDayWorkouts(){ return this._read(M89_KEYS.DAY_WORKOUTS,{}); },
+  getDayWorkout(dateStr){ return this.getDayWorkouts()[dateStr]||null; },
+  saveDayWorkout(dateStr,workout){ const all=this.getDayWorkouts(); all[dateStr]=Object.assign({},workout,{updatedAt:new Date().toISOString()}); this._write(M89_KEYS.DAY_WORKOUTS,all); return all[dateStr]; },
+  clearDayWorkout(dateStr){ const all=this.getDayWorkouts(); delete all[dateStr]; this._write(M89_KEYS.DAY_WORKOUTS,all); },
+  getGymProfile(){ return Object.assign({availableEquipment:[],unavailableEquipment:[],updatedAt:null},this._read(M89_KEYS.GYM_PROFILE,{})); },
+  saveGymProfile(patch){ const merged=Object.assign({},this.getGymProfile(),patch,{updatedAt:new Date().toISOString()}); this._write(M89_KEYS.GYM_PROFILE,merged); return merged; },
+  getExercisePreferences(){ return Object.assign({preferred:{},avoid:{},updatedAt:null},this._read(M89_KEYS.EXERCISE_PREFS,{})); },
+  saveExercisePreferences(patch){ const current=this.getExercisePreferences(); const merged=Object.assign({},current,patch,{preferred:Object.assign({},current.preferred,patch.preferred||{}),avoid:Object.assign({},current.avoid,patch.avoid||{}),updatedAt:new Date().toISOString()}); this._write(M89_KEYS.EXERCISE_PREFS,merged); return merged; },
+
   getMessProfile(){ return Object.assign({katoriMl:180,ladleMl:110,glassMl:250,rotiSize:'medium',updatedAt:null},this._read(M89_KEYS.MESS_PROFILE,{})); },
   saveMessProfile(patch){ const merged=Object.assign({},this.getMessProfile(),patch,{updatedAt:new Date().toISOString()}); this._write(M89_KEYS.MESS_PROFILE,merged); return merged; },
   getMealHistory(){ return this._read(M89_KEYS.MEAL_HISTORY,[]); },
@@ -113,7 +128,7 @@ const Store = {
   getAppState(){ return Object.assign({version:'0.0.0',migration:0,lastBriefDate:null},this._read(M89_KEYS.APP,{})); },
   saveAppState(patch){ const merged=Object.assign({},this.getAppState(),patch); this._write(M89_KEYS.APP,merged); return merged; },
 
-  exportAll(){ return {schemaVersion:5,app:'ASCEND',exportedAt:new Date().toISOString(),settings:this.getSettings(),meta:this.getMeta(),checkins:this.getCheckins(),photos:this.getPhotos(),workouts:this.getWorkoutLog(),trainingSessions:this.getTrainingSessions(),messProfile:this.getMessProfile(),mealHistory:this.getMealHistory(),campaigns:this.getCampaigns(),activeCampaignId:this.getActiveCampaignId(),operator:this.getOperator(),onboarding:this.getOnboardingState(),recoveryHistory:this.getRecoveryHistory(),appState:this.getAppState()}; },
+  exportAll(){ return {schemaVersion:6,app:'ASCEND',exportedAt:new Date().toISOString(),settings:this.getSettings(),meta:this.getMeta(),checkins:this.getCheckins(),photos:this.getPhotos(),workouts:this.getWorkoutLog(),trainingSessions:this.getTrainingSessions(),routineWorkouts:this.getRoutineWorkouts(),dayWorkouts:this.getDayWorkouts(),gymProfile:this.getGymProfile(),exercisePreferences:this.getExercisePreferences(),messProfile:this.getMessProfile(),mealHistory:this.getMealHistory(),campaigns:this.getCampaigns(),activeCampaignId:this.getActiveCampaignId(),operator:this.getOperator(),onboarding:this.getOnboardingState(),recoveryHistory:this.getRecoveryHistory(),appState:this.getAppState()}; },
   validateBackup(payload){
     if(!payload||typeof payload!=='object') throw new Error('Invalid backup file');
     if(payload.app&&payload.app!=='ASCEND'&&payload.app!=='Mission 89') throw new Error('Backup belongs to another app');
@@ -121,6 +136,6 @@ const Store = {
     if(payload.campaigns&&!Array.isArray(payload.campaigns)) throw new Error('Invalid campaign data');
     return true;
   },
-  importAll(payload){ this.validateBackup(payload); if(payload.settings)this._write(M89_KEYS.SETTINGS,payload.settings); if(payload.meta)this._write(M89_KEYS.META,payload.meta); if(payload.checkins)this._write(M89_KEYS.CHECKINS,payload.checkins); if(payload.photos)this._write(M89_KEYS.PHOTOS,payload.photos); if(payload.workouts)this._write(M89_KEYS.WORKOUTS,payload.workouts); if(payload.trainingSessions)this._write(M89_KEYS.TRAINING_SESSIONS,payload.trainingSessions); if(payload.messProfile)this._write(M89_KEYS.MESS_PROFILE,payload.messProfile); if(payload.mealHistory)this._write(M89_KEYS.MEAL_HISTORY,payload.mealHistory); if(payload.campaigns)this._write(M89_KEYS.CAMPAIGNS,payload.campaigns); if(payload.activeCampaignId)this._write(M89_KEYS.ACTIVE_CAMPAIGN,payload.activeCampaignId); if(payload.operator)this._write(M89_KEYS.OPERATOR,payload.operator); if(payload.onboarding)this._write(M89_KEYS.ONBOARDING,payload.onboarding); if(payload.recoveryHistory)this._write(M89_KEYS.RECOVERY,payload.recoveryHistory); if(payload.appState)this._write(M89_KEYS.APP,payload.appState); this.getCampaigns(); return true; },
+  importAll(payload){ this.validateBackup(payload); if(payload.settings)this._write(M89_KEYS.SETTINGS,payload.settings); if(payload.meta)this._write(M89_KEYS.META,payload.meta); if(payload.checkins)this._write(M89_KEYS.CHECKINS,payload.checkins); if(payload.photos)this._write(M89_KEYS.PHOTOS,payload.photos); if(payload.workouts)this._write(M89_KEYS.WORKOUTS,payload.workouts); if(payload.trainingSessions)this._write(M89_KEYS.TRAINING_SESSIONS,payload.trainingSessions); if(payload.routineWorkouts)this._write(M89_KEYS.ROUTINE_WORKOUTS,payload.routineWorkouts); if(payload.dayWorkouts)this._write(M89_KEYS.DAY_WORKOUTS,payload.dayWorkouts); if(payload.gymProfile)this._write(M89_KEYS.GYM_PROFILE,payload.gymProfile); if(payload.exercisePreferences)this._write(M89_KEYS.EXERCISE_PREFS,payload.exercisePreferences); if(payload.messProfile)this._write(M89_KEYS.MESS_PROFILE,payload.messProfile); if(payload.mealHistory)this._write(M89_KEYS.MEAL_HISTORY,payload.mealHistory); if(payload.campaigns)this._write(M89_KEYS.CAMPAIGNS,payload.campaigns); if(payload.activeCampaignId)this._write(M89_KEYS.ACTIVE_CAMPAIGN,payload.activeCampaignId); if(payload.operator)this._write(M89_KEYS.OPERATOR,payload.operator); if(payload.onboarding)this._write(M89_KEYS.ONBOARDING,payload.onboarding); if(payload.recoveryHistory)this._write(M89_KEYS.RECOVERY,payload.recoveryHistory); if(payload.appState)this._write(M89_KEYS.APP,payload.appState); this.getCampaigns(); return true; },
   wipeAll(){ Object.values(M89_KEYS).forEach(k=>this._remove(k)); }
 };

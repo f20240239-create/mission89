@@ -51,7 +51,7 @@ const Workout = {
       ${isRest?'<div class="card system-note"><b>Recovery is training.</b><span>Keep intensity low. Finish fresher than you started.</span></div>':''}
       <div class="training-toolbar">
         <span class="section-label">${isRest?'Recovery Activities':'Exercises'}</span>
-        <button class="btn btn-ghost btn-small" onclick="Workout.showWeeklyVolume()">Weekly Volume</button>
+        <div class="training-toolbar-actions"><button class="btn btn-ghost btn-small" onclick="Workout.modifyWorkout()">Modify Workout</button><button class="btn btn-ghost btn-small" onclick="Workout.showWeeklyVolume()">Weekly Volume</button></div>
       </div>
       <div class="stagger">${cards}</div>
       <button class="btn btn-primary" onclick="Workout.finishDay()">${day.completed?'Training Logged ✓':'Complete Training Day'}</button>`;
@@ -70,13 +70,14 @@ const Workout = {
       <label>Reps<input type="number" inputmode="numeric" min="0" step="1" data-ex="${ex.id}" data-set="${i}" data-field="reps" value="${set.reps??''}" placeholder="reps"></label>
       <button class="set-check ${set.done?'done':''}" data-ex="${ex.id}" data-set="${i}" aria-label="Complete set">✓</button>
     </div>`).join('');
-    const alternatives=(EXERCISE_INTEL[ex.id]?.alternatives||[]).join(' · ');
+    const alternatives=this._candidateExercises(ex,'replace').slice(0,3).map(x=>x.name).join(' · ');
     return `<article class="card smart-exercise ${complete?'exercise-cleared':''}" style="animation-delay:${index*.025}s">
       <button class="exercise-summary" data-toggle="${ex.id}">
         <span><b>${ex.name}</b><small>${ex.sets} sets × ${ex.reps}</small></span>
         <span class="exercise-target"><small>NEXT TARGET</small><b>${intel.target}</b></span>
         <span class="exercise-state">${complete?'✓':'›'}</span>
       </button>
+      <button class="exercise-adapt-btn" data-adapt="${ex.id}">Adapt Exercise</button>
       <div class="exercise-detail" id="detail-${ex.id}">
         <div class="intel-strip ${intel.plateau?'warning':''}"><span>${intel.message}</span><b>${intel.pr?'PR RANGE · ':''}${intel.confidence} CONFIDENCE</b></div>
         <div class="set-grid">${inputs}</div>
@@ -188,6 +189,7 @@ const Workout = {
   _bind(){
     document.querySelectorAll('.day-pill').forEach(b=>b.onclick=()=>this.render(b.dataset.date));
     document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>document.getElementById(`detail-${b.dataset.toggle}`)?.classList.toggle('open'));
+    document.querySelectorAll('[data-adapt]').forEach(b=>b.onclick=()=>this.openExerciseActions(b.dataset.adapt));
     document.querySelectorAll('.set-check').forEach(b=>b.onclick=()=>{ const ex=b.dataset.ex,i=Number(b.dataset.set),day=Store.getTrainingDay(this.activeDate),workout=getWorkoutForDate(this.activeDate),def=workout.exercises.find(x=>x.id===ex),sets=this._normalizeSets(day.exercises[ex]?.sets,def.sets); sets[i].done=!sets[i].done; this._save(ex,sets,day.exercises[ex]?.note||''); this.render(this.activeDate); });
     document.querySelectorAll('.set-row input').forEach(input=>input.onchange=()=>{ const ex=input.dataset.ex,i=Number(input.dataset.set),field=input.dataset.field,day=Store.getTrainingDay(this.activeDate),def=getWorkoutForDate(this.activeDate).exercises.find(x=>x.id===ex),sets=this._normalizeSets(day.exercises[ex]?.sets,def.sets); sets[i][field]=input.value===''?'':Number(input.value); this._save(ex,sets,day.exercises[ex]?.note||''); });
     document.querySelectorAll('[data-note]').forEach(t=>t.onchange=()=>{ const ex=t.dataset.note,day=Store.getTrainingDay(this.activeDate),def=getWorkoutForDate(this.activeDate).exercises.find(x=>x.id===ex),sets=this._normalizeSets(day.exercises[ex]?.sets,def.sets); this._save(ex,sets,t.value.trim()); });
@@ -201,9 +203,113 @@ const Workout = {
     if(this.activeDate===U.todayStr()) Store.saveCheckin(this.activeDate,{workoutDone:true});
     U.toast(`Training stored · ${count}/${workout.exercises.length} exercises cleared.`); this.render(this.activeDate);
   },
+  _currentWorkout(){ return getWorkoutForDate(this.activeDate); },
+  _exerciseBySlot(id){ return this._currentWorkout().exercises.find(ex=>ex.id===id); },
+  _catalogMeta(ex){ return EXERCISE_BY_ID[ex?.catalogId]||EXERCISE_BY_NAME[String(ex?.name||'').toLowerCase()]||ex||{}; },
+  _available(ex){
+    const unavailable=Store.getGymProfile().unavailableEquipment||[];
+    return !unavailable.includes(ex.equipment);
+  },
+  _candidateExercises(original,mode='replace'){
+    const source=this._catalogMeta(original);
+    const prefs=Store.getExercisePreferences();
+    return EXERCISE_CATALOG.filter(ex=>ex.id!==source.catalogId&&ex.id!==source.id&&this._available(ex)&&!prefs.avoid?.[ex.id])
+      .map(ex=>{
+        let score=0;
+        if(ex.movement===source.movement) score+=60;
+        if(ex.primary===source.primary) score+=30;
+        if((ex.secondary||[]).includes(source.primary)||(source.secondary||[]).includes(ex.primary)) score+=6;
+        if(prefs.preferred?.[source.catalogId]===ex.id) score+=20;
+        const diff=(ex.difficulty||2)-(source.difficulty||2);
+        if(mode==='easier') score+=diff<0?35:-Math.abs(diff)*15;
+        if(mode==='harder') score+=diff>0?35:-Math.abs(diff)*15;
+        if(mode==='replace') score-=Math.abs(diff)*3;
+        return {...ex,score,approval:ex.movement===source.movement?'Equivalent movement':ex.primary===source.primary?'Same primary muscle':'Secondary match'};
+      }).filter(ex=>ex.score>=25).sort((a,b)=>b.score-a.score);
+  },
+  _modal(content){
+    document.querySelector('.exercise-intel-modal')?.remove();
+    const modal=document.createElement('div'); modal.className='simple-modal show exercise-intel-modal';
+    modal.innerHTML=`<section class="card simple-modal-card exercise-intel-card"><button class="daily-brief-close" data-close>×</button>${content}</section>`;
+    document.body.appendChild(modal); modal.querySelector('[data-close]').onclick=()=>modal.remove(); modal.onclick=e=>{if(e.target===modal)modal.remove();}; return modal;
+  },
+  openExerciseActions(exId){
+    const ex=this._exerciseBySlot(exId); if(!ex) return;
+    const meta=this._catalogMeta(ex);
+    const modal=this._modal(`<span class="eyebrow">EXERCISE INTELLIGENCE</span><h2>${ex.name}</h2>
+      <div class="exercise-analysis-grid"><div><span>Movement</span><b>${this._label(meta.movement)}</b></div><div><span>Primary</span><b>${meta.primary||'Unclassified'}</b></div><div><span>Equipment</span><b>${meta.equipment||'Unknown'}</b></div><div><span>Difficulty</span><b>${meta.difficulty||'—'}/5</b></div></div>
+      <p class="text-dim">The exercise can change. The training purpose should not.</p>
+      <div class="adapt-action-grid">
+        <button data-mode="busy">Machine busy</button><button data-mode="unavailable">Not in my gym</button>
+        <button data-mode="easier">Need easier variation</button><button data-mode="harder">Need harder variation</button>
+        <button data-mode="replace">Choose replacement</button><button data-mode="remove" class="danger-action">Remove exercise</button>
+      </div>`);
+    modal.querySelectorAll('[data-mode]').forEach(btn=>btn.onclick=()=>{
+      const mode=btn.dataset.mode;
+      if(mode==='remove'){ modal.remove(); this.removeExercise(exId); return; }
+      if(mode==='unavailable'&&meta.equipment){
+        const profile=Store.getGymProfile(),unavailable=[...new Set([...(profile.unavailableEquipment||[]),meta.equipment])]; Store.saveGymProfile({unavailableEquipment:unavailable});
+      }
+      modal.remove(); this.showSuggestions(exId,mode==='busy'||mode==='unavailable'?'replace':mode);
+    });
+  },
+  showSuggestions(exId,mode='replace'){
+    const original=this._exerciseBySlot(exId); if(!original) return;
+    const candidates=this._candidateExercises(original,mode).slice(0,12);
+    const rows=candidates.map(ex=>`<button class="exercise-option" data-catalog="${ex.id}"><span><b>${ex.name}</b><small>${ex.approval} · ${ex.equipment} · difficulty ${ex.difficulty}/5</small></span><strong>${Math.min(99,Math.max(55,ex.score))}%</strong></button>`).join('');
+    const modal=this._modal(`<span class="eyebrow">APPROVED VARIATIONS</span><h2>Replace ${original.name}</h2><p class="text-dim">Ranked by movement pattern, target muscle, difficulty and your gym profile.</p><div class="exercise-option-list">${rows||'<p>No approved match remains after gym and preference filters.</p>'}</div>`);
+    modal.querySelectorAll('[data-catalog]').forEach(btn=>btn.onclick=()=>{ const id=btn.dataset.catalog; modal.remove(); this.chooseScope(`Use ${EXERCISE_BY_ID[id].name}`,scope=>this.replaceExercise(exId,id,scope)); });
+  },
+  chooseScope(title,callback){
+    const modal=this._modal(`<span class="eyebrow">APPLY CHANGE</span><h2>${title}</h2><p class="text-dim">Today keeps the original plan for future sessions. Routine changes every future ${U.shortDay(this.activeDate)} session.</p><div class="scope-actions"><button class="btn btn-ghost" data-scope="today">Today only</button><button class="btn btn-primary" data-scope="routine">Save to routine</button></div>`);
+    modal.querySelectorAll('[data-scope]').forEach(btn=>btn.onclick=()=>{ const scope=btn.dataset.scope; modal.remove(); callback(scope); });
+  },
+  _saveWorkout(workout,scope){ const payload={tag:workout.tag,title:workout.title,sub:workout.sub,exercises:workout.exercises}; if(scope==='routine') Store.saveRoutineWorkout(U.parseDate(this.activeDate).getDay(),payload); else Store.saveDayWorkout(this.activeDate,payload); },
+  replaceExercise(slotId,catalogId,scope){
+    const workout=this._currentWorkout(),index=workout.exercises.findIndex(ex=>ex.id===slotId),old=workout.exercises[index],item=EXERCISE_BY_ID[catalogId]; if(index<0||!item)return;
+    const newId=`${slotId.split('--')[0]}--${catalogId}`;
+    workout.exercises[index]={...item,id:newId,catalogId:item.id,sets:old.sets,reps:old.reps,replacedFrom:old.name};
+    this._saveWorkout(workout,scope);
+    const prefs=Store.getExercisePreferences(); Store.saveExercisePreferences({preferred:{...(prefs.preferred||{}),[old.catalogId||old.id]:catalogId}});
+    U.toast(`${item.name} approved · ${scope==='routine'?'routine updated':'today only'}.`); this.render(this.activeDate);
+  },
+  removeExercise(slotId){
+    const ex=this._exerciseBySlot(slotId); if(!ex)return;
+    this.chooseScope(`Remove ${ex.name}`,scope=>{ const workout=this._currentWorkout(); workout.exercises=workout.exercises.filter(x=>x.id!==slotId); this._saveWorkout(workout,scope); U.toast(`${ex.name} removed ${scope==='routine'?'from routine':'for today'}.`); this.render(this.activeDate); });
+  },
+  modifyWorkout(){
+    const modal=this._modal(`<span class="eyebrow">WORKOUT CONTROL</span><h2>Modify ${this._currentWorkout().title}</h2><p class="text-dim">Add an approved exercise, teach ASCEND your equipment, or restore the default protocol.</p><div class="adapt-action-grid"><button data-action="add">Add exercise</button><button data-action="gym">Gym equipment</button><button data-action="resetToday">Reset today</button><button data-action="resetRoutine">Reset routine</button></div>`);
+    modal.querySelector('[data-action="add"]').onclick=()=>{modal.remove();this.addExercise();};
+    modal.querySelector('[data-action="gym"]').onclick=()=>{modal.remove();this.editGymProfile();};
+    modal.querySelector('[data-action="resetToday"]').onclick=()=>{Store.clearDayWorkout(this.activeDate);modal.remove();U.toast('Today restored from routine.');this.render(this.activeDate);};
+    modal.querySelector('[data-action="resetRoutine"]').onclick=()=>{if(confirm('Restore the default workout for this weekday?')){Store.clearRoutineWorkout(U.parseDate(this.activeDate).getDay());Store.clearDayWorkout(this.activeDate);modal.remove();U.toast('Default routine restored.');this.render(this.activeDate);}};
+  },
+  addExercise(){
+    const available=EXERCISE_CATALOG.filter(ex=>this._available(ex));
+    const modal=this._modal(`<span class="eyebrow">EXERCISE LIBRARY</span><h2>Add Exercise</h2><input class="field-input exercise-search" data-search placeholder="Search exercise, muscle, movement or equipment"><div class="exercise-option-list" data-results></div><button class="btn btn-ghost" data-custom>Create custom exercise</button>`);
+    const results=modal.querySelector('[data-results]');
+    const render=q=>{ const terms=q.trim().toLowerCase(); const list=available.filter(ex=>!terms||`${ex.name} ${ex.primary} ${ex.movement} ${ex.equipment}`.toLowerCase().includes(terms)).slice(0,30); results.innerHTML=list.map(ex=>`<button class="exercise-option" data-catalog="${ex.id}"><span><b>${ex.name}</b><small>${ex.primary} · ${this._label(ex.movement)} · ${ex.equipment}</small></span><strong>APPROVED</strong></button>`).join(''); results.querySelectorAll('[data-catalog]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.catalog;modal.remove();this.configureAddedExercise(EXERCISE_BY_ID[id]);}); };
+    modal.querySelector('[data-search]').oninput=e=>render(e.target.value); modal.querySelector('[data-custom]').onclick=()=>{modal.remove();this.createCustomExercise();}; render('');
+  },
+  configureAddedExercise(item){
+    const modal=this._modal(`<span class="eyebrow">PROGRAM CHECK</span><h2>${item.name}</h2><div class="exercise-analysis-grid"><div><span>Movement</span><b>${this._label(item.movement)}</b></div><div><span>Primary</span><b>${item.primary}</b></div></div><label class="field-label">Working sets<input class="field-input" data-sets type="number" min="1" max="8" value="3"></label><label class="field-label">Rep range<input class="field-input" data-reps value="8-12"></label><button class="btn btn-primary" data-approve>Approve addition</button>`);
+    modal.querySelector('[data-approve]').onclick=()=>{ const sets=Math.max(1,Math.min(8,Number(modal.querySelector('[data-sets]').value)||3)),reps=modal.querySelector('[data-reps]').value.trim()||'8-12'; modal.remove(); this.chooseScope(`Add ${item.name}`,scope=>{ const workout=this._currentWorkout(),id=`custom-${Date.now().toString(36)}--${item.id}`; workout.exercises.push({...item,id,catalogId:item.id,sets,reps}); this._saveWorkout(workout,scope); U.toast(`${item.name} added · ${scope==='routine'?'routine updated':'today only'}.`); this.render(this.activeDate); }); };
+  },
+  createCustomExercise(){
+    const movements=[...new Set(EXERCISE_CATALOG.map(x=>x.movement))],muscles=[...new Set(EXERCISE_CATALOG.map(x=>x.primary))],equipment=[...new Set(EXERCISE_CATALOG.map(x=>x.equipment))];
+    const modal=this._modal(`<span class="eyebrow">CUSTOM MOVEMENT</span><h2>Classify Exercise</h2><p class="text-dim">ASCEND can approve a custom exercise only when its training purpose is defined.</p><label class="field-label">Exercise name<input class="field-input" data-name></label><label class="field-label">Primary muscle<select class="field-input" data-primary>${muscles.map(x=>`<option>${x}</option>`).join('')}</select></label><label class="field-label">Movement pattern<select class="field-input" data-movement>${movements.map(x=>`<option value="${x}">${this._label(x)}</option>`).join('')}</select></label><label class="field-label">Equipment<select class="field-input" data-equipment>${equipment.map(x=>`<option>${x}</option>`).join('')}</select></label><button class="btn btn-primary" data-review>Review movement</button>`);
+    modal.querySelector('[data-review]').onclick=()=>{ const name=modal.querySelector('[data-name]').value.trim(); if(!name){U.toast('Exercise name is required.');return;} const item={id:`user-${this._slug(name)}-${Date.now().toString(36)}`,name,primary:modal.querySelector('[data-primary]').value,movement:modal.querySelector('[data-movement]').value,equipment:modal.querySelector('[data-equipment]').value,secondary:[],difficulty:2,userCreated:true}; modal.remove(); this.configureAddedExercise(item); };
+  },
+  editGymProfile(){
+    const profile=Store.getGymProfile(),items=[...new Set(EXERCISE_CATALOG.map(x=>x.equipment))].sort();
+    const modal=this._modal(`<span class="eyebrow">GYM PROFILE</span><h2>Unavailable Equipment</h2><p class="text-dim">Selected equipment will not appear in future recommendations.</p><div class="equipment-grid">${items.map(x=>`<label><input type="checkbox" value="${x}" ${profile.unavailableEquipment?.includes(x)?'checked':''}><span>${x}</span></label>`).join('')}</div><button class="btn btn-primary" data-save>Save gym profile</button>`);
+    modal.querySelector('[data-save]').onclick=()=>{ const unavailable=[...modal.querySelectorAll('input:checked')].map(x=>x.value); Store.saveGymProfile({unavailableEquipment:unavailable}); modal.remove(); U.toast('Gym profile synchronized.'); };
+  },
+  _label(value){ return String(value||'').split('-').map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(' '); },
+  _slug(value){ return String(value).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); },
   showWeeklyVolume(){
     const end=this.activeDate,start=U.addDays(end,-6),days=Store.getTrainingSessions(),volume={};
-    Object.values(days).filter(d=>d.date>=start&&d.date<=end).forEach(day=>Object.entries(day.exercises||{}).forEach(([id,entry])=>{ const muscles=EXERCISE_INTEL[id]?.muscles||['Other']; const completed=(entry.sets||[]).filter(s=>s.done).length; muscles.forEach(m=>volume[m]=(volume[m]||0)+completed/muscles.length); }));
+    Object.values(days).filter(d=>d.date>=start&&d.date<=end).forEach(day=>Object.entries(day.exercises||{}).forEach(([id,entry])=>{ const ex=Object.values(BASE_WORKOUT_SPLIT).flatMap(w=>w.exercises).find(x=>x.id===id)||EXERCISE_CATALOG.find(x=>id.endsWith(`--${x.id}`)); const muscles=[ex?.primary,...(ex?.secondary||[])].filter(Boolean).slice(0,2)||['Other']; const completed=(entry.sets||[]).filter(s=>s.done).length; muscles.forEach(m=>volume[m]=(volume[m]||0)+completed/muscles.length); }));
     const rows=Object.entries(volume).sort((a,b)=>b[1]-a[1]).map(([m,s])=>`<div class="system-init-row"><span>${m}</span><b>${s.toFixed(1)} sets</b></div>`).join('')||'<p class="text-dim">Complete training sets to generate volume analysis.</p>';
     const modal=document.createElement('div'); modal.className='simple-modal show'; modal.innerHTML=`<section class="card simple-modal-card"><button class="daily-brief-close">×</button><span class="eyebrow">7-DAY ANALYSIS</span><h2>Muscle Volume</h2>${rows}<p class="text-dim">Volume is distributed across the primary muscles assigned to each exercise. Use it as a consistency signal, not a medical prescription.</p></section>`; document.body.appendChild(modal); modal.querySelector('button').onclick=()=>modal.remove(); modal.onclick=e=>{if(e.target===modal)modal.remove();};
   }

@@ -11,7 +11,7 @@ const MISSION_WEIGHTS = Object.freeze({
   cardio: 8
 });
 
-const ASCEND_VERSION = '1.0.1';
+const ASCEND_VERSION = '1.1.0';
 const M89_VERSION = ASCEND_VERSION;
 
 const U = {
